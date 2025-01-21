@@ -37,7 +37,7 @@ You should report those to the project's repository, not here. :)
 
 ## How is this the same as / different from the Awesome Temporal project?
 
-[Awesome Temporal](https://github.com/temporalio/awesome-temporal) falls under the wider [awesome list](https://github.com/sindresorhus/awesome/blob/main/awesome.md) initiaitve, which all follow a similar format of bulleted lists and headings of a curated list of "awesome" resources related to a given topic.
+[Awesome Temporal](https://github.com/temporalio/awesome-temporal) falls under the wider [awesome list](https://github.com/sindresorhus/awesome/blob/main/awesome.md) initiative, which all follow a similar format of bulleted lists and headings of a curated list of "awesome" resources related to a given topic.
 
 Code Exchange is different, because it is a "first-class" part of Temporal's website (vs. something off to the side), and is specifically designed to bring attention to not only the awesome projects within it, but also (and importantly!) the _community contributors_ behind those projects. 💖
 
