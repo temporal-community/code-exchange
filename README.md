@@ -1,6 +1,6 @@
 # Temporal Code Exchange
 
-Welcome to Temporal's Code Exchange! This is where we showcase code that our amazing community is building.
+Welcome to the accompanying repo to Temporal's [Code Exchange](https://temporal.io/code-exchange), where we showcase awesome code that our amazing community is building.
 
 There are two ways to interact with this project:
 
@@ -19,7 +19,7 @@ Hint: If you're looking for inspiration, see the list of [open wishlist items](h
 
 ## [Request a Code Exchange project](https://github.com/temporal-community/code-exchange/issues/new?template=code-exchange-wishlist.md)
 
-This is options for folks who aren't finding what they're looking for in our Code Exchange directory, and would like to request it.
+This is options for folks who aren't finding what they're looking for in our [Code Exchange](https://temporal.io/code-exchange) directory, and would like to request it.
 
 * Use cases that are missing?
 * Integrations that we don't have yet?
@@ -27,15 +27,22 @@ This is options for folks who aren't finding what they're looking for in our Cod
 
 Please add it here!
 
-# FAQs
+## Criteria for Acceptance
+Our trusty Community team reviews submission entries on a ~bi-weekly basis. This process is still brand new, and we'll be nailing down more particulars as we go. However, in general, we will be checking the following:
 
-## Where can I go to talk about my submission / get feedback on my idea?
-Come find us on [Temporal Community Slack](https://t.mp/slack) in the #contributing channel!
+* Is this entry genuinely _useful_ to Temporal users?
+* Are the benefits of the project clearly explained?
+* Is it released under an [OSI Approved License](https://opensource.org/licenses)? (if in doubt, Temporal itself uses [MIT](https://github.com/temporalio/temporal/blob/main/LICENSE))
+* Do the instructions in the README actually work? ;-)
+
+If you have questions, come find us on [Temporal Community Slack](https://t.mp/slack) in the #contributing channel!
+
+# FAQs
 
 ## What if I find a bug with one of the projects listed in Code Exchange?
 You should report those to the project's repository, not here. :)
 
-## How is this the same as / different from the Awesome Temporal project?
+## How is this project the same as / different from the Awesome Temporal project?
 
 [Awesome Temporal](https://github.com/temporalio/awesome-temporal) falls under the wider [awesome list](https://github.com/sindresorhus/awesome/blob/main/awesome.md) initiative, which all follow a similar format of bulleted lists and headings of a curated list of "awesome" resources related to a given topic.
 
