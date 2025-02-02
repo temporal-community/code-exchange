@@ -1,18 +1,24 @@
 name: Code Exchange Submission
 about: Created content or code around Temporal? Tell us about it!
-title: "[Submission]: YOUR PROJECT NAME HERE"
-labels: code exchange submission
 assignees: webchick
+labels: code exchange submission
+title: "[Submission]: YOUR PROJECT NAME HERE"
 body:
-  - type: input
-    id: link
-    attributes:
-      label: Link
-      description: Project link
-      placeholder: ex. https://github.com/myname/foo
-    validations:
-      required: true
-  - type: dropdown
+- type: markdown
+  attributes:
+    value: "## Welcome!"
+- type: markdown
+  attributes:
+    value: |
+      Thanks for taking the time to fill out this dsubmission! If you need real-time help, join us on Slack.
+- type: input
+  id: link
+  attributes:
+    label: Project link
+    placeholder: ex. https://github.com/myname/foo
+  validations:
+    required: true
+- type: dropdown
     id: language
     attributes:
       label: Language
@@ -30,25 +36,25 @@ body:
       validations:
         required: true
       default: 0
-  - type: textarea
-    id: short-description
-    attributes:
-      label: Short description (max 256 chars)
-      description: What's the "elevator pitch" for your project, and why it is useful to Temporal users?
+- type: textarea
+  id: short-description
+  attributes:
+    label: Short description (max 256 chars)
+    description: What's the "elevator pitch" for your project, and why it is useful to Temporal users?
     validations:
       required: true
-  - type: textarea
-    id: long-description
-    attributes:
-      label: Long Description
-      description: Go into more detail; what's your project about? What types of problems does it solve? Are there screenshots / videos? etc.
+- type: textarea
+  id: long-description
+  attributes:
+    label: Long Description
+    description: Go into more detail; what's your project about? What types of problems does it solve? Are there screenshots / videos? etc.
     validations:
       required: true
-  - type: textarea
-    id: author
-    attributes:
-      label: Author(s)
-      description: How author(s) would like to be credited on this submission.
-      placeholder: Name / Company / link to picture 
+- type: textarea
+  id: author
+  attributes:
+    label: Author(s)
+    description: How author(s) would like to be credited on this submission.
+    placeholder: Name / Company / link to picture 
     validations:
       required: true
