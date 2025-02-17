@@ -47,3 +47,11 @@ body:
       description: "Go into more detail; what's your project about? What types of problems does it solve? Are there screenshots / videos? etc. This is rich text, so go nuts! :)"
     validations:
       required: true
+  - type: textarea
+    id: author
+    attributes:
+      label: Author(s)
+      description: How author(s) would like to be credited on this submission.
+      placeholder: Name / Company / link to headshot 
+    validations:
+      required: true
