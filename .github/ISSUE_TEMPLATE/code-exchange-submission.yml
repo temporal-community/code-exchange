@@ -31,10 +31,12 @@ body:
         - TypeScript
         - Other / Unofficial SDK
       default: 0
+    validations:
+      required: true
   - type: textarea
     id: short-description
     attributes:
       label: Short description (max 256 chars)
       description: What's the "elevator pitch" for your project, and why it is useful to Temporal users?
-      validations:
-        required: true
+    validations:
+      required: true
