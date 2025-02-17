@@ -13,3 +13,5 @@ body:
     attributes:
       label: Project link
       placeholder: ex. https://github.com/myname/foo
+    validations:
+      required: true
