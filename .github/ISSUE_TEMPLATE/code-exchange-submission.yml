@@ -4,3 +4,7 @@ title: "[Submission] YOUR PROJECT / USE CASE HERE"
 labels: ["code exchange submission", "triage"]
 assignees:
 - webchick
+body:
+  - type: markdown
+    attributes:
+      value: Hello World!
