@@ -8,3 +8,8 @@ body:
   - type: markdown
     attributes:
       value: Hello World!
+  - type: input
+    id: link
+    attributes:
+      label: Project link
+      placeholder: ex. https://github.com/myname/foo
