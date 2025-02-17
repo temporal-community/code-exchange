@@ -1,0 +1,6 @@
+name: Code Exchange Submission
+description: Created content or code around Temporal? Tell us about it!
+title: "[Submission] YOUR PROJECT / USE CASE HERE"
+labels: ["code exchange submission", "triage"]
+assignees:
+- webchick
