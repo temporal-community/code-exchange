@@ -15,3 +15,21 @@ body:
       placeholder: ex. https://github.com/myname/foo
     validations:
       required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      description: What language is your project written in?
+      options:
+        - (please select)
+        - .NET
+        - Go
+        - Java
+        - PHP
+        - Python
+        - Ruby
+        - TypeScript
+        - Other / Unofficial SDK
+      validations:
+        required: true
+      default: 0
