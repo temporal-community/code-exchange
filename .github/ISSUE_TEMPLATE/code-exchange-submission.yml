@@ -30,6 +30,4 @@ body:
         - Ruby
         - TypeScript
         - Other / Unofficial SDK
-      validations:
-        required: true
       default: 0
