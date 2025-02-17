@@ -40,3 +40,10 @@ body:
       description: What's the "elevator pitch" for your project, and why it is useful to Temporal users?
     validations:
       required: true
+- type: textarea
+  id: long-description
+  attributes:
+    label: Long Description
+    description: "Go into more detail; what's your project about? What types of problems does it solve? Are there screenshots / videos? etc. This is rich text, so go nuts! :)"
+  validations:
+    required: true
