@@ -1,0 +1,17 @@
+name: Code Exchange Wishlist
+description: "Is there a use case or code sample you'd like to see covered? Let us know!"
+title: "[Wishlist] DESIRED PROJECT / USE CASE HERE"
+labels: ["code exchange request", "triage"]
+assignees:
+- webchick
+body:
+  - type: markdown
+    attributes:
+      value: Hello World!
+  - type: textarea
+    id: short-description
+    attributes:
+      label: Short description
+      description: "What's the 'elevator pitch' for your project, and why it is useful to Temporal users?"
+    validations:
+      required: true
