@@ -1,7 +1,7 @@
-name: Code Exchange Wishlist
+name: Code Exchange Suggestion
 description: "Is there a use case or code sample you'd like to see covered? Let us know!"
 title: "[Wishlist] DESIRED PROJECT / USE CASE HERE"
-labels: ["code exchange request", "triage"]
+labels: ["code exchange suggestion", "triage"]
 assignees:
 - webchick
 body:
