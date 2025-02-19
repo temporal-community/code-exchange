@@ -15,3 +15,8 @@ body:
       description: "What's the 'elevator pitch' for your project, and why it is useful to Temporal users?"
     validations:
       required: true
+  - type: textarea
+    id: pre-existing
+    attributes:
+      label: Existing material
+      description: "Are you aware of any existing code, content, etc. that could be used to get someone started?"
