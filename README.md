@@ -4,7 +4,7 @@ Welcome to the accompanying repo to Temporal's [Code Exchange](https://temporal.
 
 There are two ways to interact with this project:
 
-## [Submit a Code Exchange project](https://github.com/temporal-community/code-exchange/issues/new?template=code-exchange-submission.md)
+## [Submit a Code Exchange project](https://github.com/temporal-community/code-exchange/issues/new?template=code-exchange-submission.yml)
 
 This is the option for folks who have built things like:
 
@@ -15,11 +15,11 @@ This is the option for folks who have built things like:
 
 Please use this form and one of our handy-dandy review team members will take a look and get it added!
 
-Hint: If you're looking for inspiration, see the list of [open wishlist items](https://github.com/temporal-community/code-exchange/issues?q=state%3Aopen%20label%3A%22code%20exchange%20request%22).
+Hint: If you're looking for inspiration, see the list of [open suggestions](https://github.com/temporal-community/code-exchange/issues?q=state%3Aopen%20label%3A%22code%20exchange%20suggestion%22).
 
-## [Request a Code Exchange project](https://github.com/temporal-community/code-exchange/issues/new?template=code-exchange-wishlist.md)
+## [Suggest a Code Exchange project](https://github.com/temporal-community/code-exchange/issues/new?template=code-exchange-suggestion.yml)
 
-This is options for folks who aren't finding what they're looking for in our [Code Exchange](https://temporal.io/code-exchange) directory, and would like to request it.
+This is options for folks who aren't finding what they're looking for in our [Code Exchange](https://temporal.io/code-exchange) directory, and would like to suggest it.
 
 * Use cases that are missing?
 * Integrations that we don't have yet?
