@@ -7,7 +7,7 @@ assignees:
 body:
   - type: markdown
     attributes:
-      value: Hello World!
+      value: "Have a great idea that you don't currently see on [Code Exchange](https://temporal.io/code-exchange)? Tell us about it!"
   - type: textarea
     id: short-description
     attributes:
