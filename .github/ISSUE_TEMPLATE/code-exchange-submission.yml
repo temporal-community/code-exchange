@@ -7,7 +7,7 @@ assignees:
 body:
   - type: markdown
     attributes:
-      value: Hello World!
+      value: "Thank you so much for offering to submit your code to [Code Exchange](https://temporal.io/code-exchange)! Please tell us a bit more about your project."
   - type: input
     id: link
     attributes:
