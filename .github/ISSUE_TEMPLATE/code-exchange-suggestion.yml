@@ -2,8 +2,6 @@ name: Code Exchange Suggestion
 description: "Is there a use case or code sample you'd like to see covered? Let us know!"
 title: "[Suggestion] DESIRED PROJECT / USE CASE HERE"
 labels: ["code exchange suggestion", "triage"]
-assignees:
-- webchick
 body:
   - type: markdown
     attributes:
