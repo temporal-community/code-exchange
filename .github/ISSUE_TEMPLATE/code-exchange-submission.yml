@@ -17,7 +17,6 @@ body:
       required: true
   - type: dropdown
     id: language
-    multiple: true
     attributes:
       label: Language
       description: What language is your project written in?
@@ -32,6 +31,7 @@ body:
         - TypeScript
         - Other / Unofficial SDK
       default: 0
+      multiple: true
     validations:
       required: true
   - type: textarea
