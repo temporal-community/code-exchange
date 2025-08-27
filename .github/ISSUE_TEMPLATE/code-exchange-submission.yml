@@ -21,7 +21,6 @@ body:
       label: Language
       description: What language is your project written in?
       options:
-        - 
         - .NET
         - Go
         - Java
@@ -30,7 +29,6 @@ body:
         - Ruby
         - TypeScript
         - Other / Unofficial SDK
-      default: 0
       multiple: true
     validations:
       required: true
