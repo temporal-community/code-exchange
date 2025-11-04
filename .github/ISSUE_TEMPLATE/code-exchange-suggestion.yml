@@ -1,16 +1,16 @@
 name: Code Exchange Suggestion
-description: "Is there a use case or code sample you'd like to see covered? Let us know!"
-title: "[Suggestion] DESIRED PROJECT / USE CASE HERE"
+description: "Is there a use case or code sample you'd like to see covered in the Temporal Code Exchange? Let us know!"
+title: "[Suggestion] SUGGEST A PROJECT / USE CASE HERE"
 labels: ["code exchange suggestion", "triage"]
 body:
   - type: markdown
     attributes:
-      value: "Have a great idea that you don't currently see on [Code Exchange](https://temporal.io/code-exchange)? Tell us about it!"
+      value: "Have a great idea that you don't currently see on [Code Exchange](https://temporal.io/code-exchange) and you'd like to request someone cover? Tell us about it!"
   - type: textarea
     id: short-description
     attributes:
       label: Short description
-      description: "What's the 'elevator pitch' for your project, and why it is useful to Temporal users?"
+      description: "Why would this be helpful for you?"
     validations:
       required: true
   - type: textarea
