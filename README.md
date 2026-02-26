@@ -33,7 +33,8 @@ Our trusty Community team reviews submission entries on a ~bi-weekly basis. This
 * Is this entry genuinely _useful_ to Temporal users?
 * Are the benefits of the project clearly explained?
 * Is it released under an [OSI Approved License](https://opensource.org/licenses)? (if in doubt, Temporal itself uses [MIT](https://github.com/temporalio/temporal/blob/main/LICENSE))
-* Do the instructions in the README actually work? ;-)
+* Is there a README, **and** do the instructions in the README actually _work_? ;-)
+* (for Temporalite submissions) Is the repo housed under an "official" Temporal GitHub org? (@temporalio, @temporal-community, @temporal-sa)
 
 If you have questions, come find us on [Temporal Community Slack](https://t.mp/slack) in the #contributing channel!
 
