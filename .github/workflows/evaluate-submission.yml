@@ -3,12 +3,20 @@ name: Evaluate Code Exchange Submission
 on:
   issues:
     types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to evaluate
+        required: true
+        type: number
 
 jobs:
   evaluate:
     # Run when the submission label is present — handles both template creation
-    # (label applied at open) and manual label addition
+    # (label applied at open) and manual label addition.
+    # workflow_dispatch always runs unconditionally.
     if: |
+      github.event_name == 'workflow_dispatch' ||
       (github.event.action == 'labeled' && github.event.label.name == 'code exchange submission') ||
       (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'code exchange submission'))
     runs-on: ubuntu-latest
@@ -26,12 +34,24 @@ jobs:
         run: npm install
         working-directory: .github/scripts
 
+      - name: Fetch issue data (workflow_dispatch only)
+        if: github.event_name == 'workflow_dispatch'
+        id: fetch_issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue=$(gh api repos/${{ github.repository }}/issues/${{ inputs.issue_number }})
+          echo "title=$(echo "$issue" | jq -r '.title')" >> $GITHUB_OUTPUT
+          echo "body<<EOF_BODY" >> $GITHUB_OUTPUT
+          echo "$issue" | jq -r '.body' >> $GITHUB_OUTPUT
+          echo "EOF_BODY" >> $GITHUB_OUTPUT
+
       - name: Evaluate submission
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event_name == 'workflow_dispatch' && steps.fetch_issue.outputs.title || github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event_name == 'workflow_dispatch' && steps.fetch_issue.outputs.body || github.event.issue.body }}
         run: node .github/scripts/evaluate-submission.mjs
