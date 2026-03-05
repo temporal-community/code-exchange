@@ -1,0 +1,37 @@
+name: Evaluate Code Exchange Submission
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  evaluate:
+    # Run when the submission label is present — handles both template creation
+    # (label applied at open) and manual label addition
+    if: |
+      (github.event.action == 'labeled' && github.event.label.name == 'code exchange submission') ||
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'code exchange submission'))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: .github/scripts
+
+      - name: Evaluate submission
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: node .github/scripts/evaluate-submission.mjs
