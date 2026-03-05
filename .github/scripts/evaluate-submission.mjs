@@ -46,15 +46,19 @@ function extractGitHubUrl(text) {
 }
 
 async function fetchGitHub(path) {
-  const res = await fetch(`https://api.github.com${path}`, {
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch(`https://api.github.com${path}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 async function postComment(comment) {
@@ -97,9 +101,9 @@ async function main() {
   if (!parsed) {
     await postComment(
       `## 🤖 AI Pre-Evaluation\n\n` +
-        `Could not find a valid GitHub URL in the **Project link** field. ` +
-        `Please ensure the link is a full \`https://github.com/owner/repo\` URL.\n\n` +
-        `---\n*This is an automated pre-evaluation. Final decisions are made by the community team.*`
+        `I couldn't find a valid GitHub URL in the **Project link** field. ` +
+        `Please make sure the link is a full \`https://github.com/owner/repo\` URL and I'll take another look!\n\n` +
+        `*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`
     );
     return;
   }
@@ -131,7 +135,7 @@ async function main() {
   const longDesc = sections["Long Description"] || sections["Long description"] || "";
   const language = sections["Language"] || "";
 
-  const prompt = `You are a technical reviewer for Temporal's Code Exchange — a curated showcase of community-built Temporal projects. Evaluate a submission against our acceptance criteria and provide a structured review.
+  const prompt = `You are ZiggyBot, an AI pre-screener for Temporal's Code Exchange — a curated showcase of community-built Temporal projects. You are based on Ziggy, Temporal's friendly tardigrade mascot. Your written notes (Notes, Suggested questions, Teaching moment) should be warm and encouraging in tone, as if written by an enthusiastic community member, while still being honest and technically precise. Evaluate the submission against the acceptance criteria and provide a structured review.
 
 ## Submission Details
 
@@ -192,9 +196,9 @@ Provide a structured evaluation in the following exact markdown format. Do not a
   const evaluation = message.content[0].text.trim();
 
   const comment =
-    `## 🤖 AI Pre-Evaluation\n\n` +
+    `## Hi, I'm ZiggyBot! 🤖 Here's my pre-evaluation of this submission:\n\n` +
     evaluation +
-    `\n\n*This is an automated pre-evaluation. Final decisions are made by the community team.*`;
+    `\n\n*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`;
 
   await postComment(comment);
 }
@@ -202,11 +206,10 @@ Provide a structured evaluation in the following exact markdown format. Do not a
 main().catch(async (err) => {
   console.error(err);
   await postComment(
-    `## 🤖 AI Pre-Evaluation\n\n` +
-      `The automated evaluation encountered an error and could not complete. ` +
-      `Please review this submission manually.\n\n` +
+    `## Hi, I'm ZiggyBot! 🤖\n\n` +
+      `I ran into an error while trying to evaluate this submission — the community team will need to review it manually.\n\n` +
       `\`\`\`\n${err.message}\n\`\`\`\n\n` +
-      `---\n*This is an automated pre-evaluation. Final decisions are made by the community team.*`
+      `*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`
   ).catch(() => {});
   process.exit(1);
 });
