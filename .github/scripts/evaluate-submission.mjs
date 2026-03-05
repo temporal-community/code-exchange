@@ -1,4 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -61,6 +66,40 @@ async function fetchGitHub(path) {
   }
 }
 
+async function ensureLabelExists(owner, repo, name, color, description) {
+  // Try to create — a 422 means it already exists, which is fine.
+  await fetch(`https://api.github.com/repos/${owner}/${repo}/labels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name, color, description }),
+  });
+}
+
+async function addLabel(owner, repo, issueNumber, label) {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/labels`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ labels: [label] }),
+    }
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to add label: ${res.status} ${text}`);
+  }
+}
+
 async function postComment(comment) {
   if (DRY_RUN) {
     console.log("\n=== DRY RUN: Comment that would be posted ===\n");
@@ -85,6 +124,14 @@ async function postComment(comment) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to post comment: ${res.status} ${text}`);
+  }
+}
+
+function loadDocsContext() {
+  try {
+    return readFileSync(join(__dirname, "docs-context.txt"), "utf-8");
+  } catch {
+    return null;
   }
 }
 
@@ -135,6 +182,8 @@ async function main() {
   const longDesc = sections["Long Description"] || sections["Long description"] || "";
   const language = sections["Language"] || "";
 
+  const docsContext = loadDocsContext();
+
   const prompt = `You are ZiggyBot, an AI pre-screener for Temporal's Code Exchange — a curated showcase of community-built Temporal projects. You are based on Ziggy, Temporal's friendly tardigrade mascot. Your written notes (Notes, Suggested questions, Teaching moment) should be warm and encouraging in tone, as if written by an enthusiastic community member, while still being honest and technically precise. Evaluate the submission against the acceptance criteria and provide a structured review.
 
 ## Submission Details
@@ -156,7 +205,7 @@ async function main() {
 ${readmeContent || "No README found or README could not be fetched."}
 \`\`\`
 
-## Acceptance Criteria
+${docsContext ? `## Temporal Reference\n\n${docsContext}\n\n` : ""}## Acceptance Criteria
 
 ${ACCEPTANCE_CRITERIA}
 
@@ -201,6 +250,16 @@ Provide a structured evaluation in the following exact markdown format. Do not a
     `\n\n*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`;
 
   await postComment(comment);
+
+  if (!DRY_RUN) {
+    const [repoOwner, repoName] = REPO.split("/");
+    await ensureLabelExists(
+      repoOwner, repoName,
+      "ziggy reviewed", "7B61FF",
+      "Pre-screened by ZiggyBot"
+    );
+    await addLabel(repoOwner, repoName, ISSUE_NUMBER, "ziggy reviewed");
+  }
 }
 
 main().catch(async (err) => {

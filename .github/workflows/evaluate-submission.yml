@@ -34,6 +34,29 @@ jobs:
         run: npm install
         working-directory: .github/scripts
 
+      # ── Temporal docs cache ──────────────────────────────────────────────
+      - name: Get Temporal docs HEAD SHA
+        id: docs_sha
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(gh api repos/temporalio/documentation/commits/main --jq '.sha[:8]')
+          echo "sha=$sha" >> $GITHUB_OUTPUT
+
+      - name: Restore Temporal docs cache
+        id: docs_cache
+        uses: actions/cache@v4
+        with:
+          path: .github/scripts/docs-context.txt
+          key: temporal-docs-${{ steps.docs_sha.outputs.sha }}
+
+      - name: Fetch Temporal docs
+        if: steps.docs_cache.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/fetch-docs.mjs
+      # ────────────────────────────────────────────────────────────────────
+
       - name: Fetch issue data (workflow_dispatch only)
         if: github.event_name == 'workflow_dispatch'
         id: fetch_issue
