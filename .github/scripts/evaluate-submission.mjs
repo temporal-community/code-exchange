@@ -318,7 +318,8 @@ Provide a structured evaluation in the following exact markdown format. Do not a
   const comment =
     `## Hi, I'm ZiggyBot! 🤖 Here's my pre-evaluation of this submission:\n\n` +
     evaluation +
-    `\n\n*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`;
+    `\n\n---\n*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*` +
+    `\n\n**Reviewer:** Check the box below to generate a Contentful-ready long description for this submission.\n- [ ] Generate long description if needed`;
 
   await postComment(comment);
 

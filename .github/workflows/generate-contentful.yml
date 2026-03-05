@@ -1,0 +1,63 @@
+name: Generate Contentful Description
+
+on:
+  issue_comment:
+    types: [edited]
+
+jobs:
+  generate:
+    # Fire when the approval checkbox in a ZiggyBot comment is checked.
+    # Conditions:
+    #   1. The comment was posted by github-actions[bot] (ZiggyBot)
+    #   2. The new body has the checkbox checked
+    #   3. The previous body had the checkbox unchecked (i.e. this edit just checked it)
+    if: |
+      github.event.comment.user.login == 'github-actions[bot]' &&
+      contains(github.event.comment.body, '[x] Generate long description if needed') &&
+      contains(github.event.changes.body.from, '[ ] Generate long description if needed')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: .github/scripts
+
+      - name: Check editor has write access
+        id: check_perm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          perm=$(gh api repos/${{ github.repository }}/collaborators/${{ github.event.sender.login }}/permission --jq '.permission' 2>/dev/null || echo "none")
+          echo "permission=$perm" >> $GITHUB_OUTPUT
+
+      - name: Generate Contentful description
+        if: |
+          steps.check_perm.outputs.permission == 'admin' ||
+          steps.check_perm.outputs.permission == 'maintain' ||
+          steps.check_perm.outputs.permission == 'write'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: node .github/scripts/generate-contentful.mjs
+
+      - name: Warn if insufficient permissions
+        if: |
+          steps.check_perm.outputs.permission != 'admin' &&
+          steps.check_perm.outputs.permission != 'maintain' &&
+          steps.check_perm.outputs.permission != 'write'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "Only repository collaborators with write access can approve submissions. @${{ github.event.sender.login }} does not have sufficient permissions."
