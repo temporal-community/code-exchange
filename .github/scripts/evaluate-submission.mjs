@@ -127,6 +127,60 @@ async function postComment(comment) {
   }
 }
 
+// Score a file path for likelihood of containing interesting Temporal code.
+// Returns 0 for files that should be skipped entirely.
+function scoreCodeFile(path, size) {
+  const lower = path.toLowerCase();
+  const filename = lower.split("/").pop();
+  const ext = filename.split(".").pop();
+
+  const CODE_EXTS = new Set(["go", "ts", "js", "mjs", "py", "java", "cs", "rb", "php", "swift", "kt"]);
+  if (!CODE_EXTS.has(ext)) return 0;
+  if (size > 60000) return 0; // skip huge files
+
+  // Skip test files
+  if (/_test\.|\.test\.|\.spec\.|^test_/.test(filename)) return 0;
+
+  let score = 1;
+  if (lower.includes("workflow")) score += 10;
+  if (lower.includes("activit")) score += 8; // activity / activities
+  if (lower.includes("saga")) score += 7;
+  if (lower.includes("signal") || lower.includes("query")) score += 5;
+  if (lower.includes("schedule")) score += 4;
+
+  // Bonus for being inside a relevant directory
+  const parts = lower.split("/");
+  if (parts.some((p) => ["workflow", "workflows", "activity", "activities"].includes(p))) score += 3;
+
+  return score;
+}
+
+async function fetchCodeFiles(owner, repo) {
+  const treeData = await fetchGitHub(
+    `/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`
+  );
+  if (!treeData?.tree) return [];
+
+  const candidates = treeData.tree
+    .filter((item) => item.type === "blob")
+    .map((item) => ({ path: item.path, score: scoreCodeFile(item.path, item.size) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2); // fetch at most 2 files to stay within token budget
+
+  const results = [];
+  for (const { path } of candidates) {
+    const fileData = await fetchGitHub(`/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`);
+    if (!fileData?.content) continue;
+    let content = Buffer.from(fileData.content, "base64").toString("utf-8");
+    if (content.length > 2000) {
+      content = content.slice(0, 2000) + "\n// [... truncated ...]";
+    }
+    results.push({ path, content });
+  }
+  return results;
+}
+
 function loadDocsContext() {
   try {
     return readFileSync(join(__dirname, "docs-context.txt"), "utf-8");
@@ -157,9 +211,10 @@ async function main() {
 
   const { owner, repo } = parsed;
 
-  const [repoData, readmeData] = await Promise.all([
+  const [repoData, readmeData, codeFiles] = await Promise.all([
     fetchGitHub(`/repos/${owner}/${repo}`),
     fetchGitHub(`/repos/${owner}/${repo}/readme`),
+    fetchCodeFiles(owner, repo),
   ]);
 
   let readmeContent = "";
@@ -204,7 +259,13 @@ async function main() {
 \`\`\`
 ${readmeContent || "No README found or README could not be fetched."}
 \`\`\`
+${codeFiles.length > 0 ? `
+## Source Code Files
 
+The following files were identified as likely containing core Temporal logic:
+
+${codeFiles.map(({ path, content }) => `**\`${path}\`**\n\`\`\`\n${content}\n\`\`\``).join("\n\n")}
+` : ""}
 ${docsContext ? `## Temporal Reference\n\n${docsContext}\n\n` : ""}## Acceptance Criteria
 
 ${ACCEPTANCE_CRITERIA}
@@ -231,7 +292,8 @@ Provide a structured evaluation in the following exact markdown format. Do not a
 - [Questions the community team might want to ask, or "None" if the submission is clear]
 
 **Teaching moment:**
-> [Identify the single most interesting Temporal-specific pattern, concept, or technique demonstrated in this project — based on the README and description. Quote or paraphrase a brief, concrete example (a few lines or a description of a pattern). Then write 1-2 sentences explaining why it's a good teaching example for Temporal users. If no clear Temporal-specific pattern is evident from the available information, say so honestly.]
+> [Identify the single most interesting Temporal-specific pattern, concept, or technique demonstrated in this project. Quote or paraphrase a brief, concrete example. Write 1-2 sentences explaining why it's a good teaching example for Temporal users. If no clear Temporal-specific pattern is evident, say so honestly.]
+> If the pattern comes from one of the source code files above, end with a code reference on its own line in exactly this format (no deviations): [code-ref: path/to/file.go L42-L67]
 
 ---`;
 
@@ -242,7 +304,16 @@ Provide a structured evaluation in the following exact markdown format. Do not a
     messages: [{ role: "user", content: prompt }],
   });
 
-  const evaluation = message.content[0].text.trim();
+  const rawEvaluation = message.content[0].text.trim();
+
+  // Convert [code-ref: path/to/file.go L42-L67] into a clickable GitHub link
+  const evaluation = rawEvaluation.replace(
+    /\[code-ref:\s*(\S+)\s+(L\d+(?:-L?\d+)?)\]/g,
+    (_, filePath, lines) => {
+      const anchor = lines.replace(/^(L\d+)-L?(\d+)$/, "$1-L$2");
+      return `[View in source ↗](https://github.com/${owner}/${repo}/blob/main/${filePath}#${anchor})`;
+    }
+  );
 
   const comment =
     `## Hi, I'm ZiggyBot! 🤖 Here's my pre-evaluation of this submission:\n\n` +
