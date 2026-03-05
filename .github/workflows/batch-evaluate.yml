@@ -1,0 +1,51 @@
+name: Batch Evaluate Open Submissions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  batch-evaluate:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: .github/scripts
+
+      # ── Temporal docs cache (shared with evaluate-submission.yml) ────────
+      - name: Get Temporal docs HEAD SHA
+        id: docs_sha
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(gh api repos/temporalio/documentation/commits/main --jq '.sha[:8]')
+          echo "sha=$sha" >> $GITHUB_OUTPUT
+
+      - name: Restore Temporal docs cache
+        id: docs_cache
+        uses: actions/cache@v4
+        with:
+          path: .github/scripts/docs-context.txt
+          key: temporal-docs-${{ steps.docs_sha.outputs.sha }}
+
+      - name: Fetch Temporal docs
+        if: steps.docs_cache.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/fetch-docs.mjs
+      # ────────────────────────────────────────────────────────────────────
+
+      - name: Run batch evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/batch-evaluate.mjs
