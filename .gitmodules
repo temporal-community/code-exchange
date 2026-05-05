@@ -1,0 +1,3 @@
+[submodule "robot-manager/temporal-hack"]
+	path = robot-manager/temporal-hack
+	url = https://github.com/ferrosadb/temporal-hack.git
