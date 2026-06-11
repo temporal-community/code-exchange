@@ -100,30 +100,53 @@ async function addLabel(owner, repo, issueNumber, label) {
   }
 }
 
+// Hidden marker (invisible in rendered markdown) so reruns update ZiggyBot's
+// existing evaluation comment in place instead of posting a duplicate.
+const COMMENT_MARKER = "<!-- ziggybot-eval -->";
+
+async function findExistingComment(owner, repo) {
+  let page = 1;
+  while (true) {
+    const comments = await fetchGitHub(
+      `/repos/${owner}/${repo}/issues/${ISSUE_NUMBER}/comments?per_page=100&page=${page}`
+    );
+    if (!comments || !comments.length) return null;
+    const hit = comments.find((c) => c.body && c.body.includes(COMMENT_MARKER));
+    if (hit) return hit.id;
+    if (comments.length < 100) return null;
+    page++;
+  }
+}
+
 async function postComment(comment) {
+  const body = `${COMMENT_MARKER}\n${comment}`;
   if (DRY_RUN) {
     console.log("\n=== DRY RUN: Comment that would be posted ===\n");
-    console.log(comment);
+    console.log(body);
     console.log("\n=== END ===\n");
     return;
   }
   const [owner, repo] = REPO.split("/");
-  const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/issues/${ISSUE_NUMBER}/comments`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ body: comment }),
-    }
-  );
+  // Upsert: update the existing ZiggyBot comment if present, else create one.
+  const existingId = await findExistingComment(owner, repo);
+  const url = existingId
+    ? `https://api.github.com/repos/${owner}/${repo}/issues/comments/${existingId}`
+    : `https://api.github.com/repos/${owner}/${repo}/issues/${ISSUE_NUMBER}/comments`;
+  const res = await fetch(url, {
+    method: existingId ? "PATCH" : "POST",
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ body }),
+  });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Failed to post comment: ${res.status} ${text}`);
+    throw new Error(
+      `Failed to ${existingId ? "update" : "post"} comment: ${res.status} ${text}`
+    );
   }
 }
 
@@ -155,27 +178,49 @@ function scoreCodeFile(path, size) {
   return score;
 }
 
-async function fetchCodeFiles(owner, repo) {
+async function fetchRepoTree(owner, repo) {
   const treeData = await fetchGitHub(
     `/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`
   );
-  if (!treeData?.tree) return [];
+  return treeData?.tree || [];
+}
 
-  const candidates = treeData.tree
+// Look for a top-level license file in the repo tree. GitHub's license
+// classifier reports NOASSERTION for valid licenses it can't match, so we
+// detect the file ourselves and let the model read it rather than guessing.
+function detectLicenseFile(tree) {
+  const match = tree.find((item) => {
+    if (item.type !== "blob" || item.path.includes("/")) return false; // top-level only
+    const name = item.path.toLowerCase();
+    return /^(licen[sc]e|copying|unlicense)(\..+)?$/.test(name);
+  });
+  return match?.path || null;
+}
+
+async function fetchFileContent(owner, repo, path, maxChars) {
+  const fileData = await fetchGitHub(
+    `/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`
+  );
+  if (!fileData?.content) return null;
+  let content = Buffer.from(fileData.content, "base64").toString("utf-8");
+  if (content.length > maxChars) {
+    content = content.slice(0, maxChars) + "\n// [... truncated ...]";
+  }
+  return content;
+}
+
+async function fetchCodeFiles(owner, repo, tree) {
+  const candidates = tree
     .filter((item) => item.type === "blob")
     .map((item) => ({ path: item.path, score: scoreCodeFile(item.path, item.size) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 2); // fetch at most 2 files to stay within token budget
+    .slice(0, 3); // fetch at most 3 files to stay within token budget
 
   const results = [];
   for (const { path } of candidates) {
-    const fileData = await fetchGitHub(`/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`);
-    if (!fileData?.content) continue;
-    let content = Buffer.from(fileData.content, "base64").toString("utf-8");
-    if (content.length > 2000) {
-      content = content.slice(0, 2000) + "\n// [... truncated ...]";
-    }
+    const content = await fetchFileContent(owner, repo, path, 2500);
+    if (content === null) continue;
     results.push({ path, content });
   }
   return results;
@@ -201,34 +246,54 @@ async function main() {
 
   if (!parsed) {
     await postComment(
-      `## 🤖 AI Pre-Evaluation\n\n` +
-        `I couldn't find a valid GitHub URL in the **Project link** field. ` +
-        `Please make sure the link is a full \`https://github.com/owner/repo\` URL and I'll take another look!\n\n` +
-        `*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`
+      `## ZiggyBot — automated pre-evaluation\n\n` +
+        `No valid GitHub URL was found in the **Project link** field. ` +
+        `Provide a full \`https://github.com/owner/repo\` URL and re-trigger the review.\n\n` +
+        `---\n*Automated AI pre-screen by ZiggyBot. Final decisions are made by the community team.*`
     );
     return;
   }
 
   const { owner, repo } = parsed;
 
-  const [repoData, readmeData, codeFiles] = await Promise.all([
+  const [repoData, readmeData, tree] = await Promise.all([
     fetchGitHub(`/repos/${owner}/${repo}`),
     fetchGitHub(`/repos/${owner}/${repo}/readme`),
-    fetchCodeFiles(owner, repo),
+    fetchRepoTree(owner, repo),
   ]);
 
+  const codeFiles = await fetchCodeFiles(owner, repo, tree);
+  const defaultBranch = repoData?.default_branch || "main";
+
   let readmeContent = "";
+  let readmeTruncated = false;
   if (readmeData?.content) {
     readmeContent = Buffer.from(readmeData.content, "base64").toString("utf-8");
-    // Truncate to avoid hitting token limits — 8000 chars is plenty for evaluation
-    if (readmeContent.length > 8000) {
-      readmeContent = readmeContent.slice(0, 8000) + "\n\n[... README truncated ...]";
+    // Truncate only to stay within token limits. This is a tooling limit, not
+    // a deficiency in the submission — the prompt tells the model not to
+    // penalize the submitter for the omitted tail.
+    if (readmeContent.length > 16000) {
+      readmeContent = readmeContent.slice(0, 16000) + "\n\n[... README truncated for review ...]";
+      readmeTruncated = true;
     }
   }
 
-  const licenseInfo = repoData?.license
-    ? `${repoData.license.name} (SPDX: ${repoData.license.spdx_id})`
-    : "Not detected by GitHub";
+  // Resolve the license. GitHub's classifier reports NOASSERTION for licenses
+  // it can't match, so fall back to detecting a license file in the tree and
+  // reading it, rather than defaulting to "unclear".
+  const spdx = repoData?.license?.spdx_id;
+  const hasClassifiedLicense = spdx && spdx !== "NOASSERTION";
+  const licenseFilePath = detectLicenseFile(tree);
+  let licenseInfo;
+  let licenseFileContent = "";
+  if (hasClassifiedLicense) {
+    licenseInfo = `${repoData.license.name} (SPDX: ${spdx})`;
+  } else if (licenseFilePath) {
+    licenseInfo = `GitHub could not auto-classify it, but a license file exists at "${licenseFilePath}" — its contents are provided below so you can identify the license yourself.`;
+    licenseFileContent = (await fetchFileContent(owner, repo, licenseFilePath, 1500)) || "";
+  } else {
+    licenseInfo = "No license file detected anywhere in the repository.";
+  }
 
   const shortDesc =
     sections["Short description (max 256 chars)"] ||
@@ -239,7 +304,7 @@ async function main() {
 
   const docsContext = loadDocsContext();
 
-  const prompt = `You are ZiggyBot, an AI pre-screener for Temporal's Code Exchange — a curated showcase of community-built Temporal projects. You are based on Ziggy, Temporal's friendly tardigrade mascot. Your written notes (Notes, Suggested questions, Teaching moment) should be warm and encouraging in tone, as if written by an enthusiastic community member, while still being honest and technically precise. Evaluate the submission against the acceptance criteria and provide a structured review.
+  const prompt = `You are ZiggyBot, an automated pre-screener for Temporal's Code Exchange — a curated showcase of community-built Temporal projects. Your output is a triage note read by the community-review team and by the submitter. Write in a neutral, factual, technical tone, like an internal code-review note. No mascot persona, no greetings, no emoji, no exclamation marks, no superlatives, and no filler interjections ("beautifully crafted", "chef's kiss", "showstopper", "delightful", "elegant", "love the…"). State strengths and weaknesses as plain, specific observations. Be concise. Evaluate the submission against the acceptance criteria and provide a structured review.
 
 ## Submission Details
 
@@ -252,10 +317,14 @@ async function main() {
 ## Fetched Repository Data
 
 **GitHub repo description:** ${repoData?.description || "none"}
-**License:** ${licenseInfo}
+**License:** ${licenseInfo}${licenseFileContent ? `
+**License file contents:**
+\`\`\`
+${licenseFileContent}
+\`\`\`` : ""}
 **Is fork:** ${repoData?.fork ?? "unknown"}
 **Stars:** ${repoData?.stargazers_count ?? "unknown"}
-**README content:**
+**README content:**${readmeTruncated ? " (truncated by our tooling for length — evaluate what's present and do NOT ask the submitter to supply the omitted tail)" : ""}
 \`\`\`
 ${readmeContent || "No README found or README could not be fetched."}
 \`\`\`
@@ -271,6 +340,8 @@ ${docsContext ? `## Temporal Reference\n\n${docsContext}\n\n` : ""}## Acceptance
 ${ACCEPTANCE_CRITERIA}
 
 ## Your Task
+
+When assessing the license, identify it from the license file contents above if GitHub failed to classify it: a present, identifiable OSI-approved license is ✅ even when GitHub reports NOASSERTION. Use ❌ only when no license file exists at all, and ⚠️ only when a file exists but its license genuinely cannot be determined.
 
 Provide a structured evaluation in the following exact markdown format. Do not add any text before or after this block:
 
@@ -291,16 +362,16 @@ Provide a structured evaluation in the following exact markdown format. Do not a
 **Suggested questions for submitter:**
 - [Questions the community team might want to ask, or "None" if the submission is clear]
 
-**Teaching moment:**
-> [Identify the single most interesting Temporal-specific pattern, concept, or technique demonstrated in this project. Quote or paraphrase a brief, concrete example. Write 1-2 sentences explaining why it's a good teaching example for Temporal users. If no clear Temporal-specific pattern is evident, say so honestly.]
+**Notable Temporal pattern:**
+> [Name the single most representative Temporal-specific pattern, concept, or technique this project demonstrates. State it in 1-2 plain, factual sentences — what the pattern is and why it is representative. No praise or enthusiasm. If no clear Temporal-specific pattern is evident, say so.]
 > If the pattern comes from one of the source code files above, end with a code reference on its own line in exactly this format (no deviations): [code-ref: path/to/file.go L42-L67]
 
 ---`;
 
   const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
   const message = await client.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 1024,
+    model: "claude-opus-4-8",
+    max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -311,14 +382,14 @@ Provide a structured evaluation in the following exact markdown format. Do not a
     /\[code-ref:\s*(\S+)\s+(L\d+(?:-L?\d+)?)\]/g,
     (_, filePath, lines) => {
       const anchor = lines.replace(/^(L\d+)-L?(\d+)$/, "$1-L$2");
-      return `[View in source ↗](https://github.com/${owner}/${repo}/blob/main/${filePath}#${anchor})`;
+      return `[View in source ↗](https://github.com/${owner}/${repo}/blob/${defaultBranch}/${filePath}#${anchor})`;
     }
   );
 
   const comment =
-    `## Hi, I'm ZiggyBot! 🤖 Here's my pre-evaluation of this submission:\n\n` +
+    `## ZiggyBot — automated pre-evaluation\n\n` +
     evaluation +
-    `\n\n---\n*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*` +
+    `\n\n---\n*Automated AI pre-screen by ZiggyBot. Final decisions are made by the community team.*` +
     `\n\n**Reviewer:** Check the box below to generate a Contentful-ready long description for this submission.\n- [ ] Generate long description if needed`;
 
   await postComment(comment);
@@ -337,10 +408,10 @@ Provide a structured evaluation in the following exact markdown format. Do not a
 main().catch(async (err) => {
   console.error(err);
   await postComment(
-    `## Hi, I'm ZiggyBot! 🤖\n\n` +
-      `I ran into an error while trying to evaluate this submission — the community team will need to review it manually.\n\n` +
+    `## ZiggyBot — automated pre-evaluation\n\n` +
+      `An error occurred during automated evaluation; the community team will need to review this submission manually.\n\n` +
       `\`\`\`\n${err.message}\n\`\`\`\n\n` +
-      `*ZiggyBot is an AI pre-screener based on Temporal's community mascot Ziggy. Final decisions are made by the community team.*`
+      `---\n*Automated AI pre-screen by ZiggyBot. Final decisions are made by the community team.*`
   ).catch(() => {});
   process.exit(1);
 });
