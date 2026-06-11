@@ -3,8 +3,6 @@ name: Evaluate Code Exchange Submission
 on:
   issues:
     types: [opened, labeled]
-  issue_comment:
-    types: [created, edited]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -20,8 +18,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event.action == 'labeled' && github.event.label.name == 'code exchange submission') ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@evaluate') && contains(github.event.issue.labels.*.name, 'code exchange submission')) ||
-      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'code exchange submission')) ||always()
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'code exchange submission'))
     runs-on: ubuntu-latest
     permissions:
       issues: write
