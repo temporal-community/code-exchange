@@ -30,19 +30,25 @@ jobs:
         run: npm install
         working-directory: .github/scripts
 
-      - name: Check editor has write access
-        id: check_perm
+      - name: Check editor is a Temporal employee
+        id: check_team
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Requires a token with org member-read (read:org). The default
+          # GITHUB_TOKEN is repo-scoped and CANNOT read org team membership,
+          # so a separate PAT/App secret (ORG_READ_TOKEN) is required.
+          # Fails closed: any error -> not a member -> denied.
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          SENDER: ${{ github.event.sender.login }}
         run: |
-          perm=$(gh api repos/${{ github.repository }}/collaborators/${{ github.event.sender.login }}/permission --jq '.permission' 2>/dev/null || echo "none")
-          echo "permission=$perm" >> $GITHUB_OUTPUT
+          state=$(gh api "orgs/temporal-community/teams/temporal-employees/memberships/$SENDER" --jq '.state' 2>/dev/null || echo "none")
+          if [ "$state" = "active" ]; then
+            echo "is_member=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_member=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Generate Contentful description
-        if: |
-          steps.check_perm.outputs.permission == 'admin' ||
-          steps.check_perm.outputs.permission == 'maintain' ||
-          steps.check_perm.outputs.permission == 'write'
+        if: steps.check_team.outputs.is_member == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,14 +56,14 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: node .github/scripts/generate-contentful.mjs
 
-      - name: Warn if insufficient permissions
-        if: |
-          steps.check_perm.outputs.permission != 'admin' &&
-          steps.check_perm.outputs.permission != 'maintain' &&
-          steps.check_perm.outputs.permission != 'write'
+      - name: Warn if not a Temporal employee
+        if: steps.check_team.outputs.is_member != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          SENDER: ${{ github.event.sender.login }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} \
-            --repo ${{ github.repository }} \
-            --body "Only repository collaborators with write access can approve submissions. @${{ github.event.sender.login }} does not have sufficient permissions."
+          gh issue comment "$ISSUE_NUMBER" \
+            --repo "$REPO" \
+            --body "Only members of the Temporal Employees team can approve submissions for Contentful generation. @$SENDER is not a member of that team."
